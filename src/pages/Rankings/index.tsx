@@ -3,22 +3,21 @@ import { api } from "../../services/api";
 import type { RankingItem, Category, Location } from "../../types";
 import Skeleton from "../../components/ui/Skeleton";
 import { useNavigate } from "react-router-dom";
-import { Trophy, TrendingUp, Star, TrendingDown, ArrowUpRight } from "lucide-react";
+import { Trophy, Star, Clock3 } from "lucide-react";
 import CompanyVisualCard from "../../components/company/CompanyVisualCard";
+import type { RankingBoard } from "../../types";
 
-type RankingType = "top" | "trending" | "most-rated" | "rising" | "declining";
-
-const TABS: { key: RankingType; label: string; icon: React.ReactNode }[] = [
-  { key: "top", label: "Top", icon: <Trophy size={13} /> },
-  { key: "trending", label: "Em alta", icon: <TrendingUp size={13} /> },
-  { key: "most-rated", label: "Mais avaliadas", icon: <Star size={13} /> },
-  { key: "rising", label: "Em ascensão", icon: <ArrowUpRight size={13} /> },
-  { key: "declining", label: "Em declínio", icon: <TrendingDown size={13} /> },
+const TABS: { key: RankingBoard; label: string; icon: React.ReactNode }[] = [
+  { key: "rating", label: "Melhor avaliadas", icon: <Trophy size={13} /> },
+  { key: "volume", label: "Mais avaliadas", icon: <Star size={13} /> },
+  { key: "recent", label: "Avaliação recente", icon: <Clock3 size={13} /> },
 ];
 
 export default function RankingsPage() {
-  const [active, setActive] = useState<RankingType>("top");
+  const [active, setActive] = useState<RankingBoard>("rating");
   const [items, setItems] = useState<RankingItem[]>([]);
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -27,25 +26,27 @@ export default function RankingsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.categories.list().then((r) => setCategories(r.items));
-    api.locations.list().then((r) => setLocations(r.items));
+    api.categories.list().then((r) => setCategories(r.items)).catch(() => setCategories([]));
+    api.locations.list().then((r) => setLocations(r.items)).catch(() => setLocations([]));
   }, []);
 
   useEffect(() => {
     setLoading(true);
-    const fn = {
-      top: api.rankings.top,
-      trending: api.rankings.trending,
-      "most-rated": api.rankings.mostRated,
-      rising: api.rankings.rising,
-      declining: api.rankings.declining,
-    }[active];
-    fn({
+    setError(null);
+    api.rankings.get(active, {
       limit: 50,
       category_id: catFilter || undefined,
       location_id: locFilter || undefined,
     })
-      .then((r) => setItems(r.items))
+      .then((r) => {
+        setItems(r.items);
+        setNote(r.note);
+      })
+      .catch((reason: unknown) => {
+        setItems([]);
+        setNote(null);
+        setError(reason instanceof Error ? reason.message : "Não foi possível carregar os rankings.");
+      })
       .finally(() => setLoading(false));
   }, [active, catFilter, locFilter]);
 
@@ -55,6 +56,7 @@ export default function RankingsPage() {
         <Trophy size={26} style={{ color: "var(--primary-400)" }} />
         <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--foreground)", letterSpacing: "-0.02em" }}>Rankings</h1>
       </div>
+      {note && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: -16, marginBottom: 16 }}>{note}</p>}
 
       {/* Tabs */}
       <div className="tab-bar">
@@ -102,6 +104,10 @@ export default function RankingsPage() {
 
       {loading ? (
         <Skeleton className="h-40" count={5} />
+      ) : error ? (
+        <div className="card text-center" style={{ padding: "48px 16px", color: "var(--danger)" }}>
+          <p className="text-sm font-medium">{error}</p>
+        </div>
       ) : items.length === 0 ? (
         <div className="card text-center" style={{ padding: "72px 0", color: "var(--muted)" }}>
           <p className="text-sm font-medium">Nenhum resultado encontrado.</p>
@@ -111,12 +117,11 @@ export default function RankingsPage() {
           {items.map((item, i) => (
             <CompanyVisualCard
               key={item.company_id}
-              name={item.company_name}
+              name={item.name}
               score={item.score}
               category={item.category_name}
               location={item.location_name}
               totalReviews={item.total_reviews}
-              trend={item.trend}
               rank={i + 1}
               onClick={() => navigate(`/company/${item.company_id}`)}
             />

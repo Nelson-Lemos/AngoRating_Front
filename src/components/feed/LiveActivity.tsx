@@ -20,10 +20,6 @@ function timeAgo(dateStr: string): string {
   return `${diffD}d`;
 }
 
-function avgStars(r: FeedReview): number {
-  return Math.round((r.quality + r.service + r.price + r.reliability + r.experience) / 5);
-}
-
 export default function LiveActivity({ reviews }: LiveActivityProps) {
   if (reviews.length === 0) return null;
 
@@ -61,14 +57,14 @@ export default function LiveActivity({ reviews }: LiveActivityProps) {
               flexShrink: 0,
             }}
           >
-            {(review.user_name || "A")[0].toUpperCase()}
+            {(review.user?.name || "A")[0].toUpperCase()}
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, color: "var(--foreground-soft)" }}>
-              <b style={{ fontWeight: 700, color: "var(--foreground)" }}>{review.user_name || "Anónimo"}</b>
+              <b style={{ fontWeight: 700, color: "var(--foreground)" }}>{review.user?.name || "Anónimo"}</b>
               {" "}avaliou{" "}
-              <b style={{ fontWeight: 700, color: "var(--foreground)" }}>{review.company_name}</b>
+              <b style={{ fontWeight: 700, color: "var(--foreground)" }}>{review.company?.name || "uma empresa"}</b>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
               <div style={{ display: "flex", gap: 1 }}>
@@ -76,8 +72,8 @@ export default function LiveActivity({ reviews }: LiveActivityProps) {
                   <Star
                     key={j}
                     size={10}
-                    fill={j < avgStars(review) ? "#FBBF24" : "var(--star-empty)"}
-                    color={j < avgStars(review) ? "#FBBF24" : "var(--star-empty)"}
+                    fill={j < Math.round(review.rating) ? "#FBBF24" : "var(--star-empty)"}
+                    color={j < Math.round(review.rating) ? "#FBBF24" : "var(--star-empty)"}
                   />
                 ))}
               </div>

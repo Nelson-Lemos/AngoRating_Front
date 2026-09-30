@@ -2,57 +2,36 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { api } from "../../services/api";
-import type { Review, UserXP } from "../../types";
+import type { Review, UserProgress } from "../../types";
 import Card from "../../components/ui/Card";
 import Skeleton from "../../components/ui/Skeleton";
-import { BarChart3, Building2, Calendar, MessageSquare, Trophy, Zap, Crown, Flame } from "lucide-react";
-
-const XP_LEVELS: { min: number; name: string; icon: string }[] = [
-  { min: 5000, name: "Top Reviewer", icon: "👑" },
-  { min: 2000, name: "Especialista", icon: "🏆" },
-  { min: 500, name: "Crítico", icon: "🔥" },
-  { min: 100, name: "Avaliador", icon: "⭐" },
-  { min: 0, name: "Novato", icon: "🌱" },
-];
-
-function levelForXp(xp: number) {
-  return XP_LEVELS.find((l) => xp >= l.min) || XP_LEVELS[XP_LEVELS.length - 1];
-}
-
-function nextLevelInfo(xp: number) {
-  const idx = XP_LEVELS.findIndex((l) => xp >= l.min);
-  const current = XP_LEVELS[idx];
-  const next = idx > 0 ? XP_LEVELS[idx - 1] : null;
-  if (!next) return null;
-  const range = current.min - next.min;
-  const progress = Math.min(((xp - next.min) / range) * 100, 100);
-  return { next, progress, xpNeeded: next.min - xp };
-}
+import { BarChart3, Building2, Calendar, MessageSquare, Trophy, CheckCircle2, Clock3, Camera } from "lucide-react";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [total, setTotal] = useState(0);
-  const [xpData, setXpData] = useState<UserXP | null>(null);
+  const [progress, setProgress] = useState<UserProgress | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
       api.reviews.myReviews(0, 50),
-      api.gamification.me().catch(() => null),
+      api.feed.myProgress().catch(() => null),
     ])
-      .then(([r, x]) => {
+      .then(([r, p]) => {
         setReviews(r.items);
         setTotal(r.total);
-        setXpData(x);
+        setProgress(p);
+      })
+      .catch((reason: unknown) => {
+        setLoadError(reason instanceof Error ? reason.message : "Não foi possível carregar as avaliações.");
       })
       .finally(() => setLoading(false));
   }, []);
 
   const uniqueCompanies = new Set(reviews.map((r) => r.company_id)).size;
-  const myLevel = xpData ? levelForXp(xpData.total_xp) : null;
-  const nextLevel = xpData ? nextLevelInfo(xpData.total_xp) : null;
-
   const avgRating = reviews.length
     ? (reviews.reduce((acc, r) => acc + (r.quality + r.service + r.price + r.reliability + r.experience) / 5, 0) / reviews.length)
     : 0;
@@ -74,10 +53,10 @@ export default function DashboardPage() {
     },
     {
       icon: <Trophy size={16} />,
-      label: "XP total",
-      value: xpData ? xpData.total_xp.toLocaleString("pt") : "—",
+      label: "Reputação",
+      value: progress ? progress.reputation.score.toLocaleString("pt") : "—",
       color: "text-success",
-      bg: "rgba(251,191,36,0.16)",
+      bg: "rgba(52,211,153,0.14)",
     },
     {
       icon: <Calendar size={16} />,
@@ -115,54 +94,31 @@ export default function DashboardPage() {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--foreground)", letterSpacing: "-0.02em" }}>
-              {myLevel ? `${myLevel.icon} ${user?.name}` : user?.name}
+              {user?.name}
             </h1>
             <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>
               {user?.email}
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-              {myLevel && (
+              {progress && (
                 <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 999, background: "rgba(124,107,255,0.14)", color: "var(--primary-400)", border: "1px solid rgba(124,107,255,0.3)" }}>
-                  {myLevel.icon} {myLevel.name}
+                  {progress.reputation.level}
                 </span>
               )}
-              {xpData?.rank_percentile !== null && xpData?.rank_percentile !== undefined && (
-                <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 999, background: "rgba(251,191,36,0.12)", color: "#FBBF24", border: "1px solid rgba(251,191,36,0.3)" }}>
-                  🔥 Top {xpData.rank_percentile}% avaliadores
+              {progress && (
+                <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 999, background: "rgba(52,211,153,0.12)", color: "#34D399", border: "1px solid rgba(52,211,153,0.3)" }}>
+                  {progress.reputation.open_signals} sinais em análise
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* XP Progress */}
-        {xpData && (
-          <div style={{ marginTop: 20, position: "relative" }}>
-            <div className="flex items-center justify-between mb-2">
-              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--foreground-soft)", display: "flex", alignItems: "center", gap: 5 }}>
-                <Zap size={12} style={{ color: "#FBBF24" }} /> {xpData.total_xp.toLocaleString("pt")} XP
-              </span>
-              {nextLevel ? (
-                <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                  {nextLevel.xpNeeded.toLocaleString("pt")} XP para {nextLevel.next.icon} {nextLevel.next.name}
-                </span>
-              ) : (
-                <span style={{ fontSize: 11, color: "#FBBF24", fontWeight: 700 }}>
-                  Nível máximo alcançado!
-                </span>
-              )}
-            </div>
-            <div style={{ height: 8, background: "var(--bg-2)", borderRadius: 999, overflow: "hidden", border: "1px solid var(--border)" }}>
-              <div
-                style={{
-                  height: "100%",
-                  width: `${nextLevel ? nextLevel.progress : 100}%`,
-                  background: "linear-gradient(90deg, #7C6BFF, #FBBF24)",
-                  borderRadius: 999,
-                  transition: "width 0.7s ease",
-                }}
-              />
-            </div>
+        {/* Reputação real */}
+        {progress && (
+          <div style={{ marginTop: 20, position: "relative", fontSize: 12, color: "var(--muted)" }}>
+            Nível de reputação: <strong style={{ color: "var(--foreground)" }}>{progress.reputation.level}</strong>
+            {" · "}{progress.reviews.published} avaliações publicadas
           </div>
         )}
       </div>
@@ -183,36 +139,18 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* === BADGES === */}
-      {xpData && xpData.badges.length > 0 && (
+      {/* === CONTRIBUIÇÕES === */}
+      {progress && (
         <div className="card p-5 mb-6">
           <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--foreground)", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
-            <Crown size={15} style={{ color: "#FBBF24" }} />
-            Conquistas
+            <CheckCircle2 size={15} style={{ color: "#34D399" }} />
+            Estado das contribuições
           </h2>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {xpData.badges.map((b) => (
-              <div
-                key={b.type}
-                title={b.description}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "8px 14px",
-                  borderRadius: "var(--radius-lg)",
-                  background: "var(--glass-soft)",
-                  border: "1px solid var(--border)",
-                  fontSize: 12,
-                }}
-              >
-                <span style={{ fontSize: 18 }}>{b.icon}</span>
-                <div>
-                  <div style={{ fontWeight: 700, color: "var(--foreground)" }}>{b.name}</div>
-                  <div style={{ fontSize: 10, color: "var(--muted-2)" }}>{b.description}</div>
-                </div>
-              </div>
-            ))}
+          <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 12 }}>
+            <div><CheckCircle2 size={14} /><div>{progress.reviews.published} publicadas</div></div>
+            <div><Clock3 size={14} /><div>{progress.reviews.pending} em análise</div></div>
+            <div><Trophy size={14} /><div>{progress.contributions.approved} contribuições aprovadas</div></div>
+            <div><Camera size={14} /><div>{progress.photos_approved} fotos aprovadas</div></div>
           </div>
         </div>
       )}
@@ -262,6 +200,10 @@ export default function DashboardPage() {
       </h2>
       {loading ? (
         <Skeleton className="h-16" count={3} />
+      ) : loadError ? (
+        <div className="card text-center" style={{ padding: "44px 20px", color: "var(--danger)" }}>
+          <p className="font-semibold">{loadError}</p>
+        </div>
       ) : reviews.length === 0 ? (
         <div className="card text-center" style={{ padding: "44px 20px", color: "var(--muted)" }}>
           <div style={{ width: 62, height: 62, borderRadius: "50%", margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-2)", border: "1px solid var(--border)" }}>

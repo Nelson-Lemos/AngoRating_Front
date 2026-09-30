@@ -1,18 +1,10 @@
 import React from "react";
-import { Trophy, Star, Zap } from "lucide-react";
+import { Star } from "lucide-react";
 import { motion } from "framer-motion";
-
-interface Reviewer {
-  user_id: string;
-  user_name: string;
-  total_xp: number;
-  level: string;
-  total_reviews: number;
-  rank: number;
-}
+import type { Contributor } from "../../types";
 
 interface TopReviewersProps {
-  reviewers: Reviewer[];
+  reviewers: Contributor[];
 }
 
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -61,19 +53,19 @@ export default function TopReviewers({ reviewers }: TopReviewersProps) {
               flexShrink: 0,
             }}
           >
-            {(r.user_name || "U")[0].toUpperCase()}
+            {(r.name || "U")[0].toUpperCase()}
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
-              {r.user_name}
+              {r.name}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 1 }}>
               <span style={{ fontSize: 11, color: "var(--muted)", display: "flex", alignItems: "center", gap: 3 }}>
                 <Star size={10} fill="#FBBF24" color="#FBBF24" /> {r.total_reviews} reviews
               </span>
               <span style={{ fontSize: 11, color: "var(--muted)", display: "flex", alignItems: "center", gap: 3 }}>
-                <Zap size={10} style={{ color: "#FBBF24" }} /> {r.total_xp} XP
+                <Star size={10} style={{ color: "#34D399" }} /> {r.approval_rate.toFixed(0)}% aprovadas
               </span>
             </div>
           </div>
@@ -89,7 +81,7 @@ export default function TopReviewers({ reviewers }: TopReviewersProps) {
               border: "1px solid rgba(124,107,255,0.25)",
             }}
           >
-            {r.level}
+            {r.reputation} rep.
           </div>
         </motion.div>
       ))}

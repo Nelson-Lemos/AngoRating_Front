@@ -30,7 +30,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const { access } = api.auth as any;
     if (localStorage.getItem("access_token")) {
       loadUser();
     } else {
@@ -63,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         isAuthenticated: !!user,
-        isAdmin: user?.role === "ADMIN",
+        isAdmin: user?.role === "ADMIN" || user?.role === "SUPER_ADMIN",
       }}
     >
       {children}

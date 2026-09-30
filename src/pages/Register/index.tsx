@@ -19,8 +19,8 @@ export default function RegisterPage() {
     try {
       await register(name, email, password);
       navigate("/");
-    } catch (err: any) {
-      setError(err.message || "Erro ao criar conta");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao criar conta");
     } finally {
       setLoading(false);
     }

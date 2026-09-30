@@ -1,13 +1,12 @@
 import React from "react";
-import { TrendingUp, MapPin, MessageSquare } from "lucide-react";
+import { MapPin, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
-import type { RankingItem } from "../../types";
+import type { NeedsReviewsItem } from "../../types";
 import { CompanyGraphic } from "../BrandAssets";
-import TrendIndicator from "../TrendIndicator";
 import { useNavigate } from "react-router-dom";
 
 interface RisingCardProps {
-  items: RankingItem[];
+  items: NeedsReviewsItem[];
 }
 
 export default function RisingCard({ items }: RisingCardProps) {
@@ -19,11 +18,11 @@ export default function RisingCard({ items }: RisingCardProps) {
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {items.slice(0, 5).map((item, i) => (
         <motion.div
-          key={item.company_id}
+          key={item.id}
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.25, delay: i * 0.04 }}
-          onClick={() => navigate(`/company/${item.company_id}`)}
+          onClick={() => navigate(`/company/${item.id}`)}
           style={{
             display: "flex",
             alignItems: "center",
@@ -44,27 +43,24 @@ export default function RisingCard({ items }: RisingCardProps) {
             e.currentTarget.style.borderColor = "var(--border)";
           }}
         >
-          <CompanyGraphic name={item.company_name} size={40} radius={11} img={null} />
+          <CompanyGraphic name={item.name} size={40} radius={11} img={null} />
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
-              {item.company_name}
+              {item.name}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
               {item.category_name && (
                 <span style={{ fontSize: 11, color: "var(--muted)" }}>{item.category_name}</span>
               )}
               <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--muted)" }}>
-                <MessageSquare size={10} /> {item.total_reviews}
+                <MessageSquare size={10} /> {item.review_count} avaliações
               </span>
             </div>
           </div>
 
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#34D399" }}>
-              {item.score.toFixed(1)}
-            </div>
-            <TrendIndicator value={item.trend} />
+          <div style={{ textAlign: "right", fontSize: 11, color: "var(--muted)" }}>
+            Precisa de mais opiniões
           </div>
         </motion.div>
       ))}

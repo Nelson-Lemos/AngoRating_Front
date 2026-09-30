@@ -7,7 +7,8 @@ export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as any)?.from as string | undefined;
+  const locationState = location.state as { from?: unknown } | null;
+  const from = typeof locationState?.from === "string" ? locationState.from : undefined;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -20,8 +21,8 @@ export default function LoginPage() {
     try {
       await login(email, password);
       navigate(from || "/", { replace: true });
-    } catch (err: any) {
-      setError(err.message || "Erro ao fazer login");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao fazer login");
     } finally {
       setLoading(false);
     }

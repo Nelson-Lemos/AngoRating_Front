@@ -55,6 +55,7 @@ export default function CompanyPage() {
   const [history, setHistory] = useState<ScoreHistory[]>([]);
   const [distribution, setDistribution] = useState<DistributionData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewForm, setReviewForm] = useState({
     quality: 3, service: 3, price: 3, reliability: 3, experience: 3,
@@ -68,6 +69,7 @@ export default function CompanyPage() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
+    setLoadError(null);
     Promise.all([
       api.companies.get(id),
       api.reviews.list(id),
@@ -79,6 +81,10 @@ export default function CompanyPage() {
         setReviews(r.items);
         setHistory(h.items);
         setDistribution(d);
+      })
+      .catch((reason: unknown) => {
+        setCompany(null);
+        setLoadError(reason instanceof Error ? reason.message : "Não foi possível carregar a empresa.");
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -115,8 +121,8 @@ export default function CompanyPage() {
       setCompany(c);
       setReviews(r.items);
       setDistribution(d);
-    } catch (e: any) {
-      setFormError(e.message || "Não foi possível guardar a avaliação.");
+    } catch (e: unknown) {
+      setFormError(e instanceof Error ? e.message : "Não foi possível guardar a avaliação.");
     } finally {
       setSubmitting(false);
     }
@@ -139,10 +145,10 @@ export default function CompanyPage() {
     );
   }
 
-  if (!company) {
+  if (loadError || !company) {
     return (
       <div className="container container-lg text-center" style={{ padding: "72px 16px", color: "var(--muted)" }}>
-        <p className="text-sm">Empresa não encontrada.</p>
+        <p className="text-sm">{loadError || "Empresa não encontrada."}</p>
       </div>
     );
   }
@@ -441,7 +447,6 @@ export default function CompanyPage() {
                   </div>
                   <ReviewVoteBar
                     reviewId={r.id}
-                    reviewUserId={r.user_id}
                     initialAgree={r.agree_count || 0}
                     initialDisagree={r.disagree_count || 0}
                     initialComments={r.comment_count || 0}

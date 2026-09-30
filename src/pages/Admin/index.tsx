@@ -5,13 +5,15 @@ import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Skeleton from "../../components/ui/Skeleton";
 import { Shield, Users, Building2, Star, AlertTriangle } from "lucide-react";
+import type { AdminReport, AdminStats, AdminUser } from "../../types";
 
 export default function AdminPage() {
   const { isAdmin } = useAuth();
-  const [stats, setStats] = useState<any>(null);
-  const [users, setUsers] = useState<any[]>([]);
-  const [reports, setReports] = useState<any[]>([]);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [reports, setReports] = useState<AdminReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"stats" | "users" | "reports">("stats");
 
   useEffect(() => {
@@ -25,6 +27,9 @@ export default function AdminPage() {
         setStats(s);
         setUsers(u.items);
         setReports(r.items);
+      })
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : "Não foi possível carregar os dados de administração.");
       })
       .finally(() => setLoading(false));
   }, [isAdmin]);
@@ -44,6 +49,14 @@ export default function AdminPage() {
         <Skeleton className="h-6 w-40 mb-6" />
         <Skeleton className="h-32 mb-6" />
         <Skeleton className="h-48" />
+      </div>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="container text-center" style={{ maxWidth: 896, padding: "64px 16px", color: "var(--muted)" }}>
+        <p className="text-sm font-medium">{error || "Não foi possível carregar os dados de administração."}</p>
       </div>
     );
   }

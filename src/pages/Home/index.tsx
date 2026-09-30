@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, TrendingUp, ChevronRight, ArrowRight, PenLine, Star, Flame } from "lucide-react";
+import { Search, TrendingUp, ChevronRight, ArrowRight, Star, Flame, MessageSquare, PenLine } from "lucide-react";
 import { motion } from "framer-motion";
 import { api } from "../../services/api";
-import type { RankingItem, Category, FeedReview, BattleData, WaveData, Challenge, LeaderboardEntry } from "../../types";
+import type { RankingItem, Category, FeedReview, NeedsReviewsItem, Contributor } from "../../types";
 import { categoryIcon, categoryColor } from "../../components/CategoryIcons";
 import CompanyVisualCard from "../../components/company/CompanyVisualCard";
 import LiveActivity from "../../components/feed/LiveActivity";
 import EventSpotlight from "../../components/feed/EventSpotlight";
-import BattleCard from "../../components/battle/BattleCard";
-import ChallengeCard from "../../components/challenge/ChallengeCard";
-import WaveCard from "../../components/wave/WaveCard";
 import TopReviewers from "../../components/gamification/TopReviewers";
 import RisingCard from "../../components/ranking/RisingCard";
 import { useAuth } from "../../contexts/AuthContext";
@@ -23,43 +20,37 @@ const fadeUp = {
 export default function HomePage() {
   const { isAuthenticated } = useAuth();
   const [top, setTop] = useState<RankingItem[]>([]);
-  const [trending, setTrending] = useState<RankingItem[]>([]);
-  const [rising, setRising] = useState<RankingItem[]>([]);
-  const [declining, setDeclining] = useState<RankingItem[]>([]);
+  const [recent, setRecent] = useState<RankingItem[]>([]);
+  const [mostRated, setMostRated] = useState<RankingItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [liveReviews, setLiveReviews] = useState<FeedReview[]>([]);
-  const [battle, setBattle] = useState<BattleData | null>(null);
-  const [wave, setWave] = useState<WaveData | null>(null);
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [reviewers, setReviewers] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [needsReviews, setNeedsReviews] = useState<NeedsReviewsItem[]>([]);
+  const [reviewers, setReviewers] = useState<Contributor[]>([]);
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
-    Promise.all([
-      api.rankings.top({ limit: 10 }),
-      api.rankings.trending({ limit: 8 }),
-      api.rankings.rising({ limit: 5 }),
-      api.rankings.declining({ limit: 5 }),
-      api.categories.list(),
-      api.feed.get(20).catch(() => null),
-      api.battles.active().catch(() => null),
-      api.waves.active().catch(() => null),
-      api.gamification.challenges().catch(() => null),
-      api.gamification.leaderboard(5).catch(() => null),
-    ]).then(([t, tr, ri, de, c, f, b, w, ch, rv]) => {
-      setTop(t.items);
-      setTrending(tr.items);
-      setRising(ri.items);
-      setDeclining(de.items);
-      setCategories(c.items);
-      if (f) setLiveReviews(f.recent_reviews || []);
-      setBattle(b);
-      setWave(w);
-      if (ch) setChallenges(ch.items || []);
-      if (rv) setReviewers(rv.items || []);
-    }).finally(() => setLoading(false));
+    async function loadHome() {
+      const results = await Promise.allSettled([
+        api.rankings.top({ limit: 10 }),
+        api.rankings.recent({ limit: 8 }),
+        api.rankings.mostRated({ limit: 5 }),
+        api.categories.list(),
+        api.feed.get(20),
+        api.feed.contributors(5),
+      ]);
+      const [topResult, recentResult, mostRatedResult, categoriesResult, feedResult, contributorsResult] = results;
+      if (topResult.status === "fulfilled") setTop(topResult.value.items);
+      if (recentResult.status === "fulfilled") setRecent(recentResult.value.items);
+      if (mostRatedResult.status === "fulfilled") setMostRated(mostRatedResult.value.items);
+      if (categoriesResult.status === "fulfilled") setCategories(categoriesResult.value.items);
+      if (feedResult.status === "fulfilled") {
+        setLiveReviews(feedResult.value.recent_reviews);
+        setNeedsReviews(feedResult.value.needs_reviews);
+      }
+      if (contributorsResult.status === "fulfilled") setReviewers(contributorsResult.value.items);
+    }
+    void loadHome();
   }, []);
 
   return (
@@ -168,7 +159,7 @@ export default function HomePage() {
           >
             {[
               { icon: <Flame size={16} />, label: "Feed ao vivo" },
-              { icon: <TrendingUp size={16} />, label: "Rankings dinâmicos" },
+              { icon: <TrendingUp size={16} />, label: "Rankings por avaliação" },
               { icon: <Star size={16} />, label: "Avaliar em 30s" },
             ].map((t) => (
               <div key={t.label} className="trust-item">
@@ -184,8 +175,8 @@ export default function HomePage() {
         <div className="home-grid">
           {/* ═══════ MAIN COLUMN ═══════ */}
           <div className="home-grid-main">
-            {/* O QUE ANGOLA ACHA? — event spotlight */}
-            {trending.length > 0 && (
+            {/* Avaliação mais recente */}
+            {recent.length > 0 && (
               <motion.section
                 variants={fadeUp}
                 initial="initial"
@@ -193,12 +184,12 @@ export default function HomePage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5 }}
               >
-                <EventSpotlight item={trending[0]} />
+                <EventSpotlight item={recent[0]} />
               </motion.section>
             )}
 
-            {/* EM ALTA */}
-            {trending.length > 0 && (
+            {/* AVALIAÇÕES RECENTES */}
+            {recent.length > 0 && (
               <motion.section
                 variants={fadeUp}
                 initial="initial"
@@ -210,22 +201,21 @@ export default function HomePage() {
                 <div className="section-header" style={{ marginBottom: 14 }}>
                   <div className="section-title">
                     <span className="dot" />
-                    Em alta agora
+                    Avaliações recentes
                   </div>
                   <Link to="/rankings" className="section-link">
                     Ver ranking <ChevronRight size={13} />
                   </Link>
                 </div>
                 <div className="vis-card-grid">
-                  {trending.slice(0, 4).map((item) => (
+                  {recent.slice(0, 4).map((item) => (
                     <CompanyVisualCard
                       key={item.company_id}
-                      name={item.company_name}
+                      name={item.name}
                       score={item.score}
                       category={item.category_name}
                       location={item.location_name}
                       totalReviews={item.total_reviews}
-                      trend={item.trend}
                       onClick={() => navigate(`/company/${item.company_id}`)}
                     />
                   ))}
@@ -252,8 +242,8 @@ export default function HomePage() {
               </motion.section>
             )}
 
-            {/* SUBINDO RAPIDAMENTE */}
-            {rising.length > 0 && (
+            {/* EMPRESAS COM POUCAS AVALIAÇÕES */}
+            {needsReviews.length > 0 && (
               <motion.section
                 variants={fadeUp}
                 initial="initial"
@@ -264,10 +254,10 @@ export default function HomePage() {
                 style={{ marginBottom: 22 }}
               >
                 <div className="feed-card-title">
-                  <TrendingUp size={14} style={{ color: "#34D399" }} />
-                  Subindo rapidamente
+                  <MessageSquare size={14} style={{ color: "#34D399" }} />
+                  Precisam de mais avaliações
                 </div>
-                <RisingCard items={rising} />
+                <RisingCard items={needsReviews} />
               </motion.section>
             )}
 
@@ -333,12 +323,11 @@ export default function HomePage() {
                   {top.slice(0, 4).map((item, i) => (
                     <CompanyVisualCard
                       key={item.company_id}
-                      name={item.company_name}
+                      name={item.name}
                       score={item.score}
                       category={item.category_name}
                       location={item.location_name}
                       totalReviews={item.total_reviews}
-                      trend={item.trend}
                       rank={i + 1}
                       onClick={() => navigate(`/company/${item.company_id}`)}
                     />
@@ -350,34 +339,8 @@ export default function HomePage() {
 
           {/* ═══════ SIDE COLUMN ═══════ */}
           <div className="home-grid-side">
-            {/* RATING BATTLE */}
-            {battle && (
-              <motion.section
-                variants={fadeUp}
-                initial="initial"
-                whileInView="animate"
-                viewport={{ once: true }}
-                style={{ marginBottom: 18 }}
-              >
-                <BattleCard battle={battle} />
-              </motion.section>
-            )}
-
-            {/* RATING DA SEMANA */}
-            {wave && (
-              <motion.section
-                variants={fadeUp}
-                initial="initial"
-                whileInView="animate"
-                viewport={{ once: true }}
-                style={{ marginBottom: 18 }}
-              >
-                <WaveCard wave={wave} />
-              </motion.section>
-            )}
-
-            {/* DESAFIOS DA SEMANA */}
-            {challenges.length > 0 && (
+            {/* MAIS AVALIADAS */}
+            {mostRated.length > 0 && (
               <motion.section
                 variants={fadeUp}
                 initial="initial"
@@ -387,29 +350,11 @@ export default function HomePage() {
                 style={{ marginBottom: 18 }}
               >
                 <div className="feed-card-title">
-                  <PenLine size={14} style={{ color: "#FBBF24" }} />
-                  Desafio da semana
-                </div>
-                <ChallengeCard challenges={challenges} />
-              </motion.section>
-            )}
-
-            {/* EM DECLÍNIO */}
-            {declining.length > 0 && (
-              <motion.section
-                variants={fadeUp}
-                initial="initial"
-                whileInView="animate"
-                viewport={{ once: true }}
-                className="feed-card"
-                style={{ marginBottom: 18 }}
-              >
-                <div className="feed-card-title">
-                  <ChevronRight size={14} style={{ color: "#FB7185", transform: "rotate(90deg)" }} />
-                  Em declínio
+                  <Star size={14} style={{ color: "#FBBF24" }} />
+                  Mais avaliadas
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {declining.slice(0, 4).map((item, i) => (
+                  {mostRated.slice(0, 4).map((item, i) => (
                     <div
                       key={item.company_id}
                       onClick={() => navigate(`/company/${item.company_id}`)}
@@ -419,20 +364,11 @@ export default function HomePage() {
                         <span style={{ fontSize: 13, fontWeight: 700, color: "var(--muted-3)" }}>#{i + 1}</span>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
-                          {item.company_name}
-                        </div>
-                        <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                          {item.category_name || ""}
-                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>{item.name}</div>
+                        <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.total_reviews} avaliações</div>
                       </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: "#FB7185" }}>
-                          {item.score.toFixed(1)}
-                        </div>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: "#FB7185" }}>
-                          {item.trend !== null && item.trend !== undefined && item.trend < 0 ? item.trend.toFixed(1) + "%" : ""}
-                        </span>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "var(--primary-400)" }}>
+                        {item.rating.toFixed(1)} / 5
                       </div>
                     </div>
                   ))}
@@ -451,7 +387,7 @@ export default function HomePage() {
               >
                 <div className="feed-card-title">
                   <Star size={14} style={{ color: "#FBBF24" }} />
-                  Top avaliadores
+                  Principais contribuidores
                 </div>
                 <TopReviewers reviewers={reviewers} />
               </motion.section>
@@ -477,7 +413,7 @@ export default function HomePage() {
             <p className="cta-text">
               {isAuthenticated
                 ? "Encontre uma empresa e dê a sua opinião. Veja como a sua avaliação muda o resultado."
-                : "Avalie empresas, participe em battles, ganhe XP e veja como a sua opinião se compara com a de Angola."}
+                : "Avalie empresas e ajude a comunidade a tomar decisões com informação real."}
             </p>
             {isAuthenticated ? (
               <Link to="/search" className="btn btn-lg cta-btn">

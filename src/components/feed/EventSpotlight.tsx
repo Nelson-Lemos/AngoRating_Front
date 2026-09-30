@@ -43,13 +43,13 @@ export default function EventSpotlight({ item }: SpotLightProps) {
 
       <div style={{ flex: 1, minWidth: 220 }}>
         <div style={{ fontSize: 11, fontWeight: 800, color: "#FBBF24", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
-          O que Angola acha?
+          Avaliação mais recente
         </div>
         <div style={{ fontSize: 17, fontWeight: 800, color: "var(--foreground)" }}>
-          {item.company_name}
+          {item.name}
         </div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-          {item.category_name || ""} · ⭐ {item.score.toFixed(1)} · {item.total_reviews.toLocaleString("pt")} avaliações
+          {item.category_name || ""} · ⭐ {item.rating.toFixed(1)} / 5 · {item.total_reviews.toLocaleString("pt")} avaliações
         </div>
       </div>
 

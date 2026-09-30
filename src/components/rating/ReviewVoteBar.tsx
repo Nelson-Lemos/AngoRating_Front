@@ -6,7 +6,6 @@ import type { ReviewComment } from "../../types";
 
 interface ReviewVoteBarProps {
   reviewId: string;
-  reviewUserId: string;
   initialAgree: number;
   initialDisagree: number;
   initialComments: number;
@@ -15,7 +14,6 @@ interface ReviewVoteBarProps {
 
 export default function ReviewVoteBar({
   reviewId,
-  reviewUserId,
   initialAgree,
   initialDisagree,
   initialComments,

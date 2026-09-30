@@ -2,7 +2,6 @@ import React from "react";
 import { Crown, Trophy, Medal } from "lucide-react";
 import type { RankingItem } from "../../types";
 import ScoreRing from "../ScoreRing";
-import TrendIndicator from "../TrendIndicator";
 
 interface RankingCardProps {
   item: RankingItem;
@@ -39,7 +38,7 @@ export default function RankingCard({ item, rank, onClick }: RankingCardProps) {
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold truncate" style={{ color: "var(--foreground)" }}>{item.company_name}</div>
+        <div className="text-sm font-semibold truncate" style={{ color: "var(--foreground)" }}>{item.name}</div>
         <div className="flex items-center" style={{ gap: 8, marginTop: 4 }}>
           {item.category_name && (
             <span
@@ -55,7 +54,6 @@ export default function RankingCard({ item, rank, onClick }: RankingCardProps) {
 
       <div className="flex items-center flex-shrink-0" style={{ gap: 12 }}>
         <div className="text-right">
-          <TrendIndicator value={item.trend} />
           <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>{item.total_reviews} avaliações</div>
         </div>
         <ScoreRing score={item.score} size={46} strokeWidth={3.5} />
